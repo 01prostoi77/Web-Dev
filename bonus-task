@@ -1,0 +1,192 @@
+/*
+Angular Task Management System
+*/
+
+// Install Angular CLI if not installed
+global install @angular/cli
+
+// Create a new Angular project
+ng new task-manager
+
+// Navigate to the project directory
+cd task-manager
+
+// Generate components
+ng generate component components/BaseTaskComponent
+ng generate component components/TaskItemComponent
+ng generate component components/TaskDetailComponent
+ng generate component components/TaskListComponent
+
+// Install necessary dependencies
+npm install --save @angular/router
+
+// Define BaseTaskComponent with shared properties
+export class BaseTaskComponent {
+  id: number = 0;
+  title: string = '';
+  description: string = '';
+  category: string = '';
+  status: string = 'Pending';
+  deadline: Date = new Date();
+}
+
+// TaskService for managing tasks
+import { Injectable } from '@angular/core';
+import { BaseTaskComponent } from '../components/BaseTaskComponent';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class TaskService {
+  private tasks: BaseTaskComponent[] = [
+    { id: 1, title: 'Work Task', description: 'Complete report', category: 'Work', status: 'Pending', deadline: new Date() },
+    { id: 2, title: 'Study Task', description: 'Read book', category: 'Study', status: 'Pending', deadline: new Date() },
+  ];
+
+  getTasks() {
+    return this.tasks;
+  }
+
+  getTaskById(id: any) {
+    return this.tasks.find(task => task.id === +id);
+  }
+
+  markTaskAsCompleted(id: number) {
+    const task = this.tasks.find(task => task.id === id);
+    if (task) task.status = 'Completed';
+  }
+}
+
+// Modify TaskItemComponent to display tasks
+import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { BaseTaskComponent } from '../BaseTaskComponent';
+
+@Component({
+  selector: 'app-task-item',
+  template: `
+    <div>
+      <h3>{{ task.title }}</h3>
+      <p>{{ task.description }}</p>
+      <p>Category: {{ task.category }}</p>
+      <p>Status: {{ task.status }}</p>
+      <p>Deadline: {{ task.deadline | date }}</p>
+      <a [routerLink]="['/task', task.id]">View Details</a>
+      <button (click)="markAsCompleted()" [disabled]="task.status === 'Completed'">Mark as Completed</button>
+    </div>
+  `,
+})
+export class TaskItemComponent extends BaseTaskComponent {
+  @Input() task!: BaseTaskComponent;
+  @Output() completeTask = new EventEmitter<number>();
+
+  markAsCompleted() {
+    this.completeTask.emit(this.task.id);
+  }
+}
+
+// TaskDetailComponent to show task details
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { TaskService } from '../services/task.service';
+
+@Component({
+  selector: 'app-task-detail',
+  template: `
+    <div *ngIf="task">
+      <h2>{{ task.title }}</h2>
+      <p>{{ task.description }}</p>
+      <p>Category: {{ task.category }}</p>
+      <p>Status: {{ task.status }}</p>
+      <p>Deadline: {{ task.deadline | date }}</p>
+      <button (click)="goBack()">Back to Tasks</button>
+    </div>
+  `,
+})
+export class TaskDetailComponent implements OnInit {
+  task: any;
+
+  constructor(private route: ActivatedRoute, private taskService: TaskService, private router: Router) {}
+
+  ngOnInit() {
+    const id = this.route.snapshot.paramMap.get('id');
+    this.task = this.taskService.getTaskById(id);
+  }
+
+  goBack() {
+    this.router.navigate(['/']);
+  }
+}
+
+// TaskListComponent to display the task list
+import { Component, OnInit } from '@angular/core';
+import { TaskService } from '../services/task.service';
+
+@Component({
+  selector: 'app-task-list',
+  template: `
+    <div>
+      <h1>Task List</h1>
+      <app-task-item *ngFor="let task of tasks" [task]="task" (completeTask)="markTaskCompleted($event)"></app-task-item>
+    </div>
+  `,
+})
+export class TaskListComponent implements OnInit {
+  tasks: any[] = [];
+
+  constructor(private taskService: TaskService) {}
+
+  ngOnInit() {
+    this.tasks = this.taskService.getTasks();
+  }
+
+  markTaskCompleted(id: number) {
+    this.taskService.markTaskAsCompleted(id);
+    this.tasks = [...this.taskService.getTasks()];
+  }
+}
+
+// Configure Angular Routing
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { TaskListComponent } from './components/TaskListComponent';
+import { TaskDetailComponent } from './components/TaskDetailComponent';
+
+const routes: Routes = [
+  { path: '', component: TaskListComponent },
+  { path: 'task/:id', component: TaskDetailComponent }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule {}
+
+// Main AppModule
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { AppComponent } from './app.component';
+import { TaskListComponent } from './components/TaskListComponent';
+import { TaskItemComponent } from './components/TaskItemComponent';
+import { TaskDetailComponent } from './components/TaskDetailComponent';
+import { TaskService } from './services/task.service';
+import { AppRoutingModule } from './app-routing.module';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    TaskListComponent,
+    TaskItemComponent,
+    TaskDetailComponent
+  ],
+  imports: [
+    BrowserModule,
+    AppRoutingModule
+  ],
+  providers: [TaskService],
+  bootstrap: [AppComponent]
+})
+export class AppModule {}
+
+// Run the Angular application
+ng serve
